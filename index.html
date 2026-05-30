@@ -2327,7 +2327,7 @@ testConnection().catch(() => {});
   if (DEMO) {
     const badge = document.createElement('div');
     badge.id = 'demo-badge';
-    badge.innerHTML = 'DEMO · <kbd>E</kbd> escape <kbd>S</kbd> skip';
+    badge.innerHTML = 'DEMO · <kbd>S</kbd> escape <kbd>F</kbd> skip';
     badge.style.cssText = [
       'position:fixed','bottom:16px','left:16px',
       'background:#e8b23c','color:#3c2814',
@@ -2369,7 +2369,7 @@ testConnection().catch(() => {});
     document.addEventListener('keydown', e => {
       if (e.target && /input|textarea/i.test(e.target.tagName)) return;
       if (e.key.toLowerCase() === 'e') triggerEscapeOnce = true;
-      if (e.key.toLowerCase() === 's' && typeof S !== 'undefined' && S.endsAt) S.endsAt = Date.now() + 1000;
+      if (e.key.toLowerCase() === 'f' && typeof S !== 'undefined' && S.endsAt) S.endsAt = Date.now() + 1000;
     });
     setTimeout(() => {
       const el = document.getElementById('conn-status');
