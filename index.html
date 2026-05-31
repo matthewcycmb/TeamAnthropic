@@ -1827,6 +1827,40 @@
   </div>
 </div>
 
+<!-- FORFEIT CONFIRM MODAL -->
+<div class="modal-backdrop" id="forfeit-modal" onclick="if(event.target===this)closeForfeit()">
+  <div class="modal purchase-modal">
+    <div class="kicker" style="justify-content:center;color:var(--rose);">⚠ Emergency Unlock</div>
+    <h2>ARE YOU SURE?</h2>
+    <div class="pur-warning" style="display:block;color:var(--rose);font-size:14px;line-height:1.5;">
+      All <span class="pur-star">★</span> <span id="forfeit-acorns">0</span> acorns earned this session will be <b>LOST FOREVER</b>.<br><br>
+      Snorx will remember this.
+    </div>
+    <div class="btn-row" style="margin-top:14px;">
+      <button class="ghost" onclick="closeForfeit()">Keep napping</button>
+      <button id="forfeit-confirm-btn" onclick="doForfeit()" disabled
+              style="background:var(--paper-3);color:var(--green-dk);box-shadow:3px 3px 0 var(--ink-soft);cursor:not-allowed;opacity:.85;">
+        Unlock anyway (<span id="forfeit-count">25</span>)
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- AI SHAME MODAL (post-forfeit) -->
+<div class="modal-backdrop" id="shame-modal" onclick="if(event.target===this)closeShame()">
+  <div class="modal purchase-modal">
+    <div class="kicker" style="justify-content:center;">Snorx says…</div>
+    <h2 style="font-size:20px;line-height:1.4;">"ahhh… I wish you did better."</h2>
+    <div class="pur-warning" style="display:block;font-size:13px;color:var(--ink-soft);">
+      Your phone is unlocked. 0 acorns earned.<br>
+      Try again — I believe in you.
+    </div>
+    <div class="btn-row" style="margin-top:14px;justify-content:center;">
+      <button onclick="closeShame()">Back home ▶</button>
+    </div>
+  </div>
+</div>
+
 <!-- ACHIEVEMENT TOAST -->
 <div class="achievement-toast" id="toast">
   <div class="badge">★</div>
@@ -2091,14 +2125,71 @@ testConnection().catch(() => {});
   };
 
   // ── Forfeit nap (emergency unlock during focus) ──
-  // Stops the session, unlocks the servo, awards zero acorns, returns home.
+  // Flow: open modal → "Unlock anyway" button locked with 25s countdown → unlock + AI shame.
+  window._forfeitCountdownTimer = null;
+  const FORFEIT_LOCK_SECS = 25;
+
+  function projectedAcorns() {
+    const elapsedMs = Math.max(0, (S.duration * 1000) - (S.endsAt - Date.now()));
+    const elapsedMins = Math.floor(elapsedMs / 60000);
+    return Math.max(0, elapsedMins * 10 - S.escapeCount * 2);
+  }
+
+  function stopForfeitCountdown() {
+    if (window._forfeitCountdownTimer) {
+      clearInterval(window._forfeitCountdownTimer);
+      window._forfeitCountdownTimer = null;
+    }
+  }
+
   window.forfeitSession = function() {
-    if (!confirm("Forfeit this nap? You'll get your phone back but earn 0 acorns.")) return;
+    document.getElementById('forfeit-acorns').textContent = projectedAcorns();
+    const btn = document.getElementById('forfeit-confirm-btn');
+    const lbl = document.getElementById('forfeit-count');
+    let n = FORFEIT_LOCK_SECS;
+    lbl.textContent = n;
+    btn.disabled = true;
+    btn.style.background = 'var(--paper-3)';
+    btn.style.color = 'var(--green-dk)';
+    btn.style.cursor = 'not-allowed';
+    btn.style.opacity = '.85';
+    btn.innerHTML = `Unlock anyway (<span id="forfeit-count">${n}</span>)`;
+    document.getElementById('forfeit-modal').classList.add('open');
+    stopForfeitCountdown();
+    window._forfeitCountdownTimer = setInterval(() => {
+      n--;
+      const lblNow = document.getElementById('forfeit-count');
+      if (lblNow) lblNow.textContent = n;
+      if (n <= 0) {
+        stopForfeitCountdown();
+        btn.disabled = false;
+        btn.style.background = 'var(--rose)';
+        btn.style.color = '#fff';
+        btn.style.cursor = 'pointer';
+        btn.style.opacity = '1';
+        btn.innerHTML = 'Unlock anyway';
+      }
+    }, 1000);
+  };
+
+  window.closeForfeit = function() {
+    stopForfeitCountdown();
+    document.getElementById('forfeit-modal').classList.remove('open');
+  };
+
+  window.doForfeit = function() {
+    stopForfeitCountdown();
+    document.getElementById('forfeit-modal').classList.remove('open');
     clearInterval(S.pollTimer);
     clearInterval(S.tickTimer);
     try { document.getElementById('snd-ambient').pause(); } catch {}
-    // Fire-and-forget — don't await; Pi may be slow and we don't want to hang.
     try { piPost('/unlock'); } catch {}
+    try { const a = document.getElementById('snd-shame'); a.currentTime = 0; a.play().catch(() => {}); } catch {}
+    document.getElementById('shame-modal').classList.add('open');
+  };
+
+  window.closeShame = function() {
+    document.getElementById('shame-modal').classList.remove('open');
     showPage('home');
   };
 
